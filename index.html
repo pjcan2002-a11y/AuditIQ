@@ -8,6 +8,21 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- ===== Firebase (real Google login) ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdWKGR9tAKGxJBGT6-qMVfJUw7ihDpP0U",
+    authDomain: "auditiq-be806.firebaseapp.com",
+    projectId: "auditiq-be806",
+    storageBucket: "auditiq-be806.firebasestorage.app",
+    messagingSenderId: "155534696766",
+    appId: "1:155534696766:web:8a3a6c13fcc34bac0b4c6f",
+    measurementId: "G-L0GHGTZN9J"
+  };
+  try { firebase.initializeApp(firebaseConfig); } catch (e) { console.warn('Firebase init', e); }
+</script>
 <style>
 :root {
   --primary: #0B2545;
@@ -1889,17 +1904,28 @@ function initGoogleLogin() {
 }
 
 function googleLogin() {
-  // Use the official popup when actual Google Identity Services is available
-  if (window._gisReady && typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-    try { google.accounts.id.prompt(); return; } catch(e) {}
+  // Real Google login via Firebase Authentication
+  if (typeof firebase === 'undefined' || !firebase.auth) {
+    alert('로그인 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
   }
-  // Demo/offline fallback: simulate a Google profile
-  var email = prompt('Enter your Google account email (demo simulation):');
-  if (!email) return;
-  email = email.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { alert('Invalid email format.'); return; }
-  var name = email.split('@')[0];
-  upsertGoogleUser(email, name.charAt(0).toUpperCase() + name.slice(1));
+  var provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider)
+    .then(function(result) {
+      var user = result.user || {};
+      var email = (user.email || '').toLowerCase();
+      if (!email) { alert('구글 계정 이메일을 가져오지 못했습니다.'); return; }
+      var name = user.displayName || email.split('@')[0];
+      upsertGoogleUser(email, name);
+    })
+    .catch(function(err) {
+      if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
+      if (err && err.code === 'auth/unauthorized-domain') {
+        alert('이 사이트 주소가 Firebase에 등록되지 않았습니다.\nFirebase 콘솔 → Authentication → 설정 → 승인된 도메인에\npjcan2002-a11y.github.io 를 추가해주세요.');
+        return;
+      }
+      alert('구글 로그인에 실패했습니다: ' + (err && err.message ? err.message : '알 수 없는 오류'));
+    });
 }
 
 function handleGoogleCredential(response) {
