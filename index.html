@@ -1795,21 +1795,18 @@ const FREE_TRIAL_LIMIT = 9;
 let state = { type: null, meta: {}, responses: {}, isPro: false };
 
 // ============ ACCOUNT / SESSION (Supabase Auth) ============
-const HISTORY_PREFIX = 'qmscheck_history_';
-// TEMPORARY: plan/pro status is cached client-side per user id until Step 3/4
-// move it into the Supabase `profiles` table.
-const PLAN_PREFIX = 'qmscheck_plan_';
-
 let currentUser = null; // synchronous cache of the signed-in Supabase user
 
-function loadPlanFor(uid) {
-  try { return localStorage.getItem(PLAN_PREFIX + uid) || 'free'; } catch(e) { return 'free'; }
-}
-function savePlanFor(uid, plan) {
-  try { localStorage.setItem(PLAN_PREFIX + uid, plan); } catch(e) {}
+async function fetchPlanFor(uid) {
+  try {
+    var res = await sb.from('profiles').select('plan').eq('id', uid).single();
+    return (res.data && res.data.plan) || 'free';
+  } catch (e) {
+    return 'free';
+  }
 }
 
-function userFromSession(session) {
+async function userFromSession(session) {
   if (!session || !session.user) return null;
   var u = session.user;
   var meta = u.user_metadata || {};
@@ -1818,19 +1815,12 @@ function userFromSession(session) {
     email: u.email,
     name: meta.name || meta.full_name || (u.email ? u.email.split('@')[0] : 'User'),
     company: meta.company || '',
-    plan: loadPlanFor(u.id)
+    plan: await fetchPlanFor(u.id)
   };
 }
 
 function getCurrentUser() { return currentUser; }
 function isLoggedIn() { return !!currentUser; }
-
-function loadHistory(email) {
-  try { return JSON.parse(localStorage.getItem(HISTORY_PREFIX + email) || '[]'); } catch(e) { return []; }
-}
-function saveHistory(email, list) {
-  try { localStorage.setItem(HISTORY_PREFIX + email, JSON.stringify(list)); } catch(e) {}
-}
 
 function syncProFromUser() {
   var u = getCurrentUser();
@@ -1845,8 +1835,8 @@ function syncProFromUser() {
 
 // Keeps currentUser/UI in sync with Supabase across login, logout, token
 // refresh, and the initial session restore on page load.
-sb.auth.onAuthStateChange(function(event, session) {
-  currentUser = userFromSession(session);
+sb.auth.onAuthStateChange(async function(event, session) {
+  currentUser = await userFromSession(session);
   syncProFromUser();
   refreshAuthUI();
 });
@@ -1989,7 +1979,7 @@ function openMypageUpgrade() {
   openMypage();
   openPaymentModal();
 }
-function renderMypage() {
+async function renderMypage() {
   var u = getCurrentUser();
   if (!u) return;
   var initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
@@ -2008,35 +1998,38 @@ function renderMypage() {
     planDesc.textContent = 'Free members can only use the preview items per category. All 184 items and AI reports are available on the paid plans.';
     upBtn.style.display = '';
   }
-  var hist = loadHistory(u.email);
-  document.getElementById('mpHistoryCount').textContent = hist.length;
+  var res = await sb.from('assessments').select('*').eq('user_id', u.id).order('created_at', { ascending: false });
+  var rows = res.data || [];
+  document.getElementById('mpHistoryCount').textContent = rows.length;
   var container = document.getElementById('historyContainer');
-  if (!hist.length) {
+  if (!rows.length) {
     container.innerHTML = '<div class="history-empty"><i class="fas fa-clipboard-list"></i>No assessments completed yet.<br>Start a new assessment.</div>';
     return;
   }
-  var rows = hist.slice().reverse().map(function(h){
+  var html = rows.map(function(row){
+    var h = row.result || {};
     var color = GRADE_COLORS[h.grade] || '#6B7280';
-    var d = new Date(h.date);
+    var d = new Date(row.created_at);
     var ds = d.getFullYear() + '.' + ('0'+(d.getMonth()+1)).slice(-2) + '.' + ('0'+d.getDate()).slice(-2);
     return '<tr><td>' + ds + '</td><td>' + (ICONS[h.type]||'') + ' ' + h.type + '</td><td>' + (h.company || '-') +
-      '</td><td>' + h.avg.toFixed(2) + '</td><td><span class="history-grade" style="background:' + color + '">' + h.grade + '</span></td></tr>';
+      '</td><td>' + (row.score != null ? row.score.toFixed(2) : '-') + '</td><td><span class="history-grade" style="background:' + color + '">' + h.grade + '</span></td></tr>';
   }).join('');
-  container.innerHTML = '<table class="history-table"><thead><tr><th>Date</th><th>Area</th><th>Company</th><th>Avg</th><th>Grade</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  container.innerHTML = '<table class="history-table"><thead><tr><th>Date</th><th>Area</th><th>Company</th><th>Avg</th><th>Grade</th></tr></thead><tbody>' + html + '</tbody></table>';
 }
 
-function recordDiagnosisHistory(avg, grade) {
+async function recordDiagnosisHistory(avg, grade) {
   var u = getCurrentUser();
   if (!u) return;
-  var hist = loadHistory(u.email);
-  hist.push({
-    date: Date.now(),
+  var result = {
     type: state.type || '-',
     company: (state.meta && state.meta.company) ? state.meta.company : (u.company || '-'),
-    avg: avg,
     grade: grade
+  };
+  await sb.from('assessments').insert({
+    user_id: u.id,
+    result: result,
+    score: avg
   });
-  saveHistory(u.email, hist);
 }
 
 syncProFromUser();
@@ -2132,12 +2125,11 @@ function processPayment(e) {
   setTimeout(function() {
     state.isPro = true;
     state.plan = plan;
-    // Save the payment result to the current logged-in user account
-    // TEMPORARY: written to a per-user localStorage cache until the
-    // Supabase `profiles` table (Step 3/4) stores plan status server-side.
+    // Persist the plan to Supabase so it follows the user across devices.
     if (currentUser) {
       currentUser.plan = plan;
-      savePlanFor(currentUser.id, plan);
+      var dbPlan = (plan === 'once') ? 'one-time' : plan;
+      sb.from('profiles').update({ plan: dbPlan, plan_updated_at: new Date().toISOString() }).eq('id', currentUser.id);
     }
     btn.innerHTML = original;
     btn.disabled = false;
