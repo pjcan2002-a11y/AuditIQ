@@ -1294,7 +1294,7 @@ button { font-family: inherit; }
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">Could our assessment data leak externally? <i class="fas fa-chevron-down"></i></div>
-        <div class="faq-a"><p>In this version, everything you enter is stored only in your browser (LocalStorage) and is not sent to any external server. (Note: once server-side sync is introduced, this policy will be updated accordingly and disclosed in the Privacy Policy.)</p></div>
+        <div class="faq-a"><p>No. Your account and assessment data are stored securely on our backend, protected by row-level security so that only you can ever read or write your own records — not other users, and not visible by default to anyone else.</p></div>
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">Who typically uses this? <i class="fas fa-chevron-down"></i></div>
@@ -1617,7 +1617,7 @@ button { font-family: inherit; }
         <div class="auth-field">
           <label for="signupPassword">Password</label>
           <input type="password" id="signupPassword" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
-          <div class="auth-hint">This is a demo environment — your password is stored only in this browser. Do not enter real personal information.</div>
+          <div class="auth-hint">Your account is created securely on our backend (Supabase). Passwords are encrypted and never stored in plain text, and each user can only access their own data.</div>
         </div>
         <button type="submit" class="btn btn-primary auth-submit"><i class="fas fa-user-plus"></i> Sign Up</button>
       </form>
@@ -2011,7 +2011,7 @@ async function renderMypage() {
     var color = GRADE_COLORS[h.grade] || '#6B7280';
     var d = new Date(row.created_at);
     var ds = d.getFullYear() + '.' + ('0'+(d.getMonth()+1)).slice(-2) + '.' + ('0'+d.getDate()).slice(-2);
-    return '<tr><td>' + ds + '</td><td>' + (ICONS[h.type]||'') + ' ' + h.type + '</td><td>' + (h.company || '-') +
+    return '<tr><td>' + ds + '</td><td>' + (ICONS[h.type]||'') + ' ' + catLabel(h.type) + '</td><td>' + (h.company || '-') +
       '</td><td>' + (row.score != null ? row.score.toFixed(2) : '-') + '</td><td><span class="history-grade" style="background:' + color + '">' + h.grade + '</span></td></tr>';
   }).join('');
   container.innerHTML = '<table class="history-table"><thead><tr><th>Date</th><th>Area</th><th>Company</th><th>Avg</th><th>Grade</th></tr></thead><tbody>' + html + '</tbody></table>';
@@ -2252,6 +2252,28 @@ const AI_KEY_STORAGE = 'qmscheck_anthropic_key';
 const AI_ENABLED_STORAGE = 'qmscheck_ai_enabled';
 const AI_MODEL = 'claude-haiku-4-5-20251001';
 
+// Phase 3: paste the deployed ai-proxy Worker URL here (e.g. 'https://auditiq-ai-proxy.<subdomain>.workers.dev').
+// Left blank in Phase 2 -- callAIProxyBackend short-circuits to null and the app behaves exactly as before.
+const AI_PROXY_URL = '';
+
+async function callAIProxyBackend(prompt) {
+  if (!AI_PROXY_URL) return null;
+  try {
+    var res = await fetch(AI_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt })
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data || data.enabled === false || !data.text) return null;
+    return data.text;
+  } catch (e) {
+    console.warn('AI proxy unavailable, falling back:', e.message);
+    return null;
+  }
+}
+
 function loadAISettings() {
   try {
     var key = localStorage.getItem(AI_KEY_STORAGE) || '';
@@ -2415,7 +2437,9 @@ function parseAIResponse(text) {
 
 async function genAIItem(item) {
   try {
-    var raw = await callAnthropicAI(buildItemPrompt(item));
+    var prompt = buildItemPrompt(item);
+    var raw = await callAIProxyBackend(prompt);
+    if (!raw) raw = await callAnthropicAI(prompt);
     var parsed = parseAIResponse(raw);
     if (!parsed) return null;
     return parsed;
@@ -2892,7 +2916,7 @@ function exportResults() {
     const k = `${state.type}_${it.cat_no}_${it.item_no}`;
     const r = state.responses[k] || {};
     const safe = s => `"${(s||'').toString().replace(/"/g,'""').replace(/\n/g,' ')}"`;
-    csv += `${it.cat_no}.${it.item_no},${safe(it.keyword)},${safe(it.clause)},${safe(it.question)},${r.grade||'-'},${safe(r.finding||'')},${safe(r.evidence||'')},${safe(r.opinion||'')}\n`;
+    csv += `${it.cat_no}.${it.item_no},${safe(kwLabel(it.keyword))},${safe(it.clause)},${safe(it.question)},${r.grade||'-'},${safe(r.finding||'')},${safe(r.evidence||'')},${safe(r.opinion||'')}\n`;
   });
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
