@@ -8,6 +8,7 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <style>
 :root {
   --primary: #0B2545;
@@ -673,7 +674,11 @@ button { font-family: inherit; }
   transition: all 0.2s;
 }
 .modal-pay-btn:hover { background: #1F1F1F; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(10,10,10,0.25); }
+.modal-pay-btn:disabled { background: var(--gray-300); color: var(--gray-500); cursor: not-allowed; transform: none; box-shadow: none; }
 .modal-secure { font-size: 0.78rem; color: var(--gray-500); text-align: center; margin-top: 12px; }
+.terms-check-row { display: flex; align-items: flex-start; gap: 8px; font-size: 0.82rem; color: var(--gray-600); line-height: 1.5; cursor: pointer; }
+.terms-check-row input { width: auto; margin-top: 3px; flex-shrink: 0; }
+.terms-check-row a { color: var(--primary); text-decoration: underline; }
 
 @media print {
   .navbar, .app-header, .stepper, .btn-row, .progress-container, .modal-overlay, .trial-banner { display: none !important; }
@@ -1689,28 +1694,14 @@ button { font-family: inherit; }
       </ul>
     </div>
 
-    <form class="payment-form" onsubmit="processPayment(event)">
-      <div>
-        <label>Email (for receipt)</label>
-        <input type="email" required placeholder="you@company.com">
-      </div>
-      <div>
-        <label>Card number</label>
-        <input type="text" required placeholder="1234 5678 9012 3456" maxlength="19" pattern="[0-9 ]+">
-      </div>
-      <div class="row2">
-        <div>
-          <label>Expiry</label>
-          <input type="text" required placeholder="MM/YY" maxlength="5">
-        </div>
-        <div>
-          <label>CVC</label>
-          <input type="text" required placeholder="123" maxlength="4">
-        </div>
-      </div>
-      <button type="submit" class="modal-pay-btn" id="modalPayBtn">Pay $30 & Start <i class="fas fa-arrow-right"></i></button>
+    <form class="payment-form" onsubmit="processPayment(event); return false;">
+      <label class="terms-check-row">
+        <input type="checkbox" id="termsCheckbox" onchange="onTermsCheckboxChange()">
+        <span>I have read and agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="/refund.html" target="_blank" rel="noopener">Refund Policy</a></span>
+      </label>
+      <button type="submit" class="modal-pay-btn" id="modalPayBtn" disabled>Pay $30 & Start <i class="fas fa-arrow-right"></i></button>
     </form>
-    <div class="modal-secure"><i class="fas fa-lock"></i> 256-bit SSL · no card details stored · demo environment</div>
+    <div class="modal-secure"><i class="fas fa-lock"></i> Secure checkout powered by Paddle</div>
   </div>
 </div>
 
@@ -1760,6 +1751,34 @@ button { font-family: inherit; }
 </div>
 
 <script>
+// ============ PADDLE CONFIG ============
+// Single source of truth for the sandbox -> live switch: flip `environment`
+// to 'production', swap `clientToken` for the live client-side token, and
+// swap the price IDs for the live catalog prices.
+const PADDLE_CONFIG = {
+  environment: 'sandbox',
+  clientToken: 'test_718089cec826056558054eb390f',
+  prices: {
+    oneTime: 'pri_01kzfzw6dycaj8pd7dxmsnqbp1', // Sandbox One-Time $30
+    annual:  'pri_01kzg013nbjydncpnbw4hpkzvg', // Sandbox Annual $59/yr
+  }
+};
+
+function initPaddle() {
+  if (typeof Paddle === 'undefined') {
+    console.error('[Paddle] SDK failed to load — checkout will not work.');
+    return;
+  }
+  Paddle.Environment.set(PADDLE_CONFIG.environment);
+  Paddle.Initialize({
+    token: PADDLE_CONFIG.clientToken,
+    eventCallback: function(ev) {
+      if (ev && ev.name === 'checkout.completed') onPaddleCheckoutCompleted();
+    }
+  });
+}
+initPaddle();
+
 // ============ SUPABASE CLIENT (Phase 2, Step 1) ============
 const SUPABASE_URL = 'https://vechpiziuwuycmyhbvty.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlY2hwaXppdXd1eWNteWhidnR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjk4NTIsImV4cCI6MjA5OTYwNTg1Mn0.cVObUHvHUN_P-Pgh48v7Q98oymY7Keq6RunfkvCDwAE';
@@ -2088,9 +2107,21 @@ function goHome() {
 }
 
 function openPaymentModal(plan) {
+  if (!isLoggedIn()) {
+    openAuthModal('login');
+    return;
+  }
   document.getElementById('paymentModal').classList.add('show');
   document.body.style.overflow='hidden';
+  var terms = document.getElementById('termsCheckbox');
+  if (terms) terms.checked = false;
+  onTermsCheckboxChange();
   selectModalPlan(plan || 'once');
+}
+function onTermsCheckboxChange() {
+  var terms = document.getElementById('termsCheckbox');
+  var btn = document.getElementById('modalPayBtn');
+  if (btn) btn.disabled = !(terms && terms.checked);
 }
 function selectModalPlan(plan) {
   var isAnnual = plan === 'annual';
@@ -2110,38 +2141,47 @@ function selectModalPlan(plan) {
 function closePaymentModal() { document.getElementById('paymentModal').classList.remove('show'); document.body.style.overflow=''; }
 
 function processPayment(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   if (!isLoggedIn()) {
     alert('Please log in first to proceed with payment.');
     closePaymentModal();
     openAuthModal('login');
     return;
   }
+  var terms = document.getElementById('termsCheckbox');
+  if (!terms || !terms.checked) {
+    alert('Please agree to the Terms of Service and Refund Policy to continue.');
+    return;
+  }
+  if (typeof Paddle === 'undefined') {
+    alert('Checkout is temporarily unavailable. Please try again in a moment.');
+    return;
+  }
   var plan = document.getElementById('modalPayBtn').dataset.plan || 'once';
-  var btn = e.target.querySelector('button[type=submit]');
-  var original = btn.innerHTML;
-  btn.textContent = 'Processing...';
-  btn.disabled = true;
-  setTimeout(function() {
-    state.isPro = true;
-    state.plan = plan;
-    // Persist the plan to Supabase so it follows the user across devices.
-    if (currentUser) {
-      currentUser.plan = plan;
-      var dbPlan = (plan === 'once') ? 'one-time' : plan;
-      sb.from('profiles').update({ plan: dbPlan, plan_updated_at: new Date().toISOString() }).eq('id', currentUser.id);
-    }
-    btn.innerHTML = original;
-    btn.disabled = false;
-    var planLabel = plan === 'annual' ? 'Annual' : 'One-Time';
-    alert(planLabel + ' payment complete.\nYou now have access to all 184 items.');
-    updateTierBadge();
-    refreshAuthUI();
-    closePaymentModal();
-    if (document.getElementById('mypage').classList.contains('visible')) renderMypage();
-    if (!document.getElementById('step2').classList.contains('hidden') && state.type) renderDiagnostic();
-    if (!document.getElementById('step3').classList.contains('hidden')) renderResults();
-  }, 1200);
+  var priceId = (plan === 'annual') ? PADDLE_CONFIG.prices.annual : PADDLE_CONFIG.prices.oneTime;
+  var u = getCurrentUser();
+  Paddle.Checkout.open({
+    items: [{ priceId: priceId, quantity: 1 }],
+    customer: { email: u.email },
+    customData: { user_id: u.id },
+    settings: { displayMode: 'overlay', theme: 'light', locale: 'en' }
+  });
+}
+
+// Paddle confirms the charge; the actual plan upgrade is applied server-side
+// by the webhook (next phase). This handler only informs the user and
+// re-reads the DB so the UI picks up the change once the webhook lands.
+async function onPaddleCheckoutCompleted() {
+  closePaymentModal();
+  alert('Payment received — activating your plan...');
+  var session = (await sb.auth.getSession()).data.session;
+  currentUser = await userFromSession(session);
+  syncProFromUser();
+  refreshAuthUI();
+  updateTierBadge();
+  if (document.getElementById('mypage').classList.contains('visible')) renderMypage();
+  if (!document.getElementById('step2').classList.contains('hidden') && state.type) renderDiagnostic();
+  if (!document.getElementById('step3').classList.contains('hidden')) renderResults();
 }
 
 function initApp() {
