@@ -798,10 +798,28 @@ button { font-family: inherit; }
 .rpt-conclusion-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .rpt-conclusion p { font-size: 0.9rem; opacity: 0.85; line-height: 1.8; }
 .rpt-footer-row { display: flex; gap: 10px; padding: 16px 28px; background: var(--gray-50); border-top: 1px solid var(--gray-200); justify-content: flex-end; }
+
+/* Server-generated (ai-proxy) narrative report */
+.rpt-ai { background: white; border: 1px solid #C7D2FE; border-radius: 10px; padding: 20px 24px; margin-bottom: 22px; }
+.rpt-ai-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.95rem; font-weight: 700; color: #4338CA; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--gray-200); }
+.rpt-ai-model { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--gray-500); }
+.rpt-ai-md { font-size: 0.9rem; color: var(--gray-700); line-height: 1.8; }
+.rpt-ai-md h2 { font-size: 1rem; font-weight: 800; color: var(--gray-900); margin: 20px 0 8px; }
+.rpt-ai-md h2:first-child { margin-top: 0; }
+.rpt-ai-md h3 { font-size: 0.92rem; font-weight: 700; color: var(--gray-800); margin: 14px 0 6px; }
+.rpt-ai-md p { margin-bottom: 10px; }
+.rpt-ai-md ul, .rpt-ai-md ol { margin: 0 0 12px 20px; }
+.rpt-ai-md ul { list-style: disc; }
+.rpt-ai-md ol { list-style: decimal; }
+.rpt-ai-md li { padding: 3px 0; }
+.rpt-ai-note { font-size: 0.8rem; color: #92400E; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 8px 12px; margin-top: 12px; }
+.rpt-ai-blocked { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; font-size: 0.88rem; color: #92400E; line-height: 1.7; }
+.rpt-ai-blocked b { display: block; margin-bottom: 4px; color: #78350F; }
 @media (max-width: 768px) {
   .rpt-kpi-row { flex-wrap: wrap; }
   .rpt-kpi { flex: 1 0 33%; }
   .rpt-head, .rpt-body, .rpt-conclusion, .rpt-footer-row { padding: 16px; }
+  .rpt-ai { padding: 16px; }
 }
 @media print {
   #reportSection { display: block !important; }
@@ -1709,43 +1727,29 @@ button { font-family: inherit; }
 <div class="modal-overlay" id="aiSettingsModal">
   <div class="modal">
     <button class="modal-close" onclick="closeAISettings()"><i class="fas fa-xmark"></i></button>
-    <h2><i class="fas fa-robot" style="color:#6366F1;"></i> AI Report Settings</h2>
-    <p class="subtitle">AI (Anthropic Claude Haiku) generates the per-item summary opinion and improvement ideas in the report.</p>
+    <h2><i class="fas fa-robot" style="color:#6366F1;"></i> About the AI Report</h2>
+    <p class="subtitle">The AI report is generated on AuditIQ's own server. There is nothing to set up and no API key to enter.</p>
 
     <div style="background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border:1px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:0.85rem;color:var(--gray-700);line-height:1.7;">
-      <b style="color:#1D4ED8;"><i class="fas fa-circle-info"></i> Notes</b><br>
-      · Your API key is <b>stored only in your browser (LocalStorage)</b> and is not sent to any external server.<br>
-      · The AI uses your <b>Findings / Evidence / Opinion</b> to generate per-item commentary.<br>
-      · It uses the cost-efficient <b>Claude Haiku</b> model (about $0.01–$0.05 per report).<br>
-      · If not configured, it falls back to a template-based report automatically.
+      <b style="color:#1D4ED8;"><i class="fas fa-circle-info"></i> How it works</b><br>
+      · <b>No API key required.</b> AuditIQ calls Claude from its own secure backend, so your browser never holds an API key and never talks to the AI provider directly.<br>
+      · Your saved assessment is sent to our server over an authenticated request, and the report comes back written by <b>Claude Sonnet 5</b>.<br>
+      · The AI uses your <b>grades, Findings / Evidence / Opinion</b> and the IATF&nbsp;16949 / ISO&nbsp;9001 clauses behind each item.<br>
+      · You get an <b>Executive Summary, Critical Gaps, a Prioritized Action Plan and Quick Wins</b> on top of the standard C/F-grade analysis.
     </div>
 
-    <form class="payment-form" onsubmit="saveAISettings(event)">
-      <div>
-        <label>Anthropic API key</label>
-        <input type="password" id="aiApiKeyInput" placeholder="sk-ant-..." autocomplete="off">
-        <div style="font-size:0.76rem;color:var(--gray-500);margin-top:4px;">
-          <i class="fas fa-link" style="margin-right:3px;"></i>
-          Get an API key: <a href="https://console.anthropic.com/" target="_blank" style="color:var(--primary);text-decoration:underline;">console.anthropic.com</a>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200);">
-        <input type="checkbox" id="aiEnabledInput" style="width:18px;height:18px;cursor:pointer;">
-        <label for="aiEnabledInput" style="cursor:pointer;font-weight:600;font-size:0.9rem;color:var(--gray-700);margin:0;">
-          Enable AI report generation
-        </label>
-        <span id="aiStatusBadge" style="margin-left:auto;font-size:0.75rem;font-weight:700;padding:3px 10px;border-radius:10px;background:var(--gray-200);color:var(--gray-600);">Not set</span>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <button type="button" class="btn btn-outline" style="flex:1;" onclick="closeAISettings()">Cancel</button>
-        <button type="submit" class="modal-pay-btn" style="flex:2;margin-top:0;">
-          <i class="fas fa-floppy-disk"></i> Save
-        </button>
-      </div>
-    </form>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:0.78rem;color:var(--gray-500);">
-      <span><i class="fas fa-lock"></i> Key stored locally in your browser only</span>
-      <button type="button" onclick="clearAISettings()" style="background:none;border:none;color:var(--danger);font-size:0.78rem;cursor:pointer;text-decoration:underline;">Reset settings</button>
+    <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:0.85rem;color:var(--gray-700);line-height:1.7;">
+      <b style="color:var(--gray-800);"><i class="fas fa-key"></i> What you need</b><br>
+      · You must be <b>signed in</b>, and the assessment must be finished so it is saved to your account.<br>
+      · AI reports are part of the <b>paid plans</b>. The one-time plan includes <b>1 AI report</b>; the annual plan includes <b>1 AI report per assessment</b>.<br>
+      · If the AI report is unavailable for any reason, the full template-based report is still produced.
+    </div>
+
+    <button type="button" class="modal-pay-btn" style="margin-top:0;" onclick="closeAISettings()">
+      <i class="fas fa-check"></i> Got it
+    </button>
+    <div style="margin-top:14px;font-size:0.78rem;color:var(--gray-500);text-align:center;">
+      <i class="fas fa-lock"></i> Your API credentials never leave our server — none are stored in your browser.
     </div>
   </div>
 </div>
@@ -2036,19 +2040,28 @@ async function renderMypage() {
   container.innerHTML = '<table class="history-table"><thead><tr><th>Date</th><th>Area</th><th>Company</th><th>Avg</th><th>Grade</th></tr></thead><tbody>' + html + '</tbody></table>';
 }
 
+// Saves the finished assessment and keeps its row id on `state`, because the
+// AI proxy identifies the assessment by id (it re-reads ownership and quota
+// server-side). Returns the id, or null when nothing was saved.
 async function recordDiagnosisHistory(avg, grade) {
   var u = getCurrentUser();
-  if (!u) return;
+  if (!u) return null;
   var result = {
     type: state.type || '-',
     company: (state.meta && state.meta.company) ? state.meta.company : (u.company || '-'),
     grade: grade
   };
-  await sb.from('assessments').insert({
+  var res = await sb.from('assessments').insert({
     user_id: u.id,
     result: result,
     score: avg
-  });
+  }).select('id').single();
+  if (res.error) {
+    console.warn('[assessments] insert failed:', res.error.message);
+    return null;
+  }
+  state.assessmentId = res.data && res.data.id;
+  return state.assessmentId || null;
 }
 
 syncProFromUser();
@@ -2234,7 +2247,18 @@ document.addEventListener('DOMContentLoaded', () => {
     gotoStep(2);
   };
   document.getElementById('btnBack').onclick = () => gotoStep(1);
-  document.getElementById('btnFinish').onclick = () => { renderResults(); if (state.lastResult) recordDiagnosisHistory(state.lastResult.avg, state.lastResult.grade); gotoStep(3); };
+  document.getElementById('btnFinish').onclick = () => {
+    renderResults();
+    // Kept as a promise (not awaited here) so the UI stays instant while
+    // generateReport() can still wait for the assessment id it needs.
+    if (state.lastResult) {
+      state.assessmentId = null;
+      state.aiReport = null;
+      state.savePromise = recordDiagnosisHistory(state.lastResult.avg, state.lastResult.grade)
+        .catch(function(e) { console.warn('[assessments] save error:', e && e.message); return null; });
+    }
+    gotoStep(3);
+  };
   document.getElementById('btnRestart').onclick = () => {
     if (confirm('Starting a new assessment will reset your current entries. Continue?')) {
       const wasPro = state.isPro;
@@ -2283,68 +2307,163 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeAISettings();
   });
 
-  loadAISettings();
   refreshAuthUI();
 });
 
-// ============ AI SETTINGS ============
-const AI_KEY_STORAGE = 'qmscheck_anthropic_key';
-const AI_ENABLED_STORAGE = 'qmscheck_ai_enabled';
-const AI_MODEL = 'claude-haiku-4-5-20251001';
+// ============ AI REPORT (via ai-proxy Worker) ============
+// The browser never holds an Anthropic key and never calls api.anthropic.com.
+// Everything -- auth, plan, quota, assessment ownership, the prompt and the
+// model -- lives in the ai-proxy Worker (see ./ai-proxy/worker.js).
+const AI_PROXY_URL = 'https://auditiq-ai-proxy.pjcan2002.workers.dev';
 
-// Phase 3: paste the deployed ai-proxy Worker URL here (e.g. 'https://auditiq-ai-proxy.<subdomain>.workers.dev').
-// Left blank in Phase 2 -- callAIProxyBackend short-circuits to null and the app behaves exactly as before.
-const AI_PROXY_URL = '';
+// Display label only; the Worker owns the real model id.
+const AI_MODEL_LABEL = 'Claude Sonnet 5';
 
-async function callAIProxyBackend(prompt) {
-  if (!AI_PROXY_URL) return null;
+// Reasons the proxy can refuse with 403, mapped to what the user should read.
+const AI_PROXY_ERRORS = {
+  plan_required:    'AI reports are included with the paid plans. Upgrade to the one-time ($30) or annual ($59) plan to generate one.',
+  quota_exhausted:  'You have already used the 1 AI report included with the one-time plan. The annual plan ($59/yr) includes an AI report for every assessment.',
+  already_generated:'An AI report has already been generated for this assessment. Run a new assessment to get a new one.',
+  forbidden:        'This assessment could not be found on your account. Finish and save the assessment while signed in, then try again.',
+  no_profile:       'Your account profile could not be loaded. Please sign out, sign back in, and try again.',
+  unauthorized:     'Your session has expired. Please sign in again.',
+  quota_conflict:   'Your AI report quota was just used by another request. Only one AI report is generated per quota.',
+  not_configured:   'AI reports are temporarily unavailable. Please try again later.'
+};
+
+// Calls the proxy. Resolves with { report, model, truncated } or throws an
+// Error carrying `.code` (the proxy's error code) and a user-facing message.
+async function callAIProxyBackend(assessmentId, results) {
+  var session = (await sb.auth.getSession()).data.session;
+  var token = session && session.access_token;
+  if (!token) throw aiError('unauthorized', AI_PROXY_ERRORS.unauthorized);
+
+  var res, data;
   try {
-    var res = await fetch(AI_PROXY_URL, {
+    res = await fetch(AI_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ assessment_id: assessmentId, results: results })
     });
-    if (!res.ok) return null;
-    var data = await res.json();
-    if (!data || data.enabled === false || !data.text) return null;
-    return data.text;
   } catch (e) {
-    console.warn('AI proxy unavailable, falling back:', e.message);
-    return null;
+    console.warn('[ai-proxy] network error:', e && e.message);
+    throw aiError('network', 'Could not reach the AI service. Check your connection and try again.');
   }
+
+  try { data = await res.json(); } catch (e) { data = null; }
+
+  if (!res.ok || !data || data.ok !== true) {
+    var code = (data && data.error) || ('http_' + res.status);
+    // Prefer our own wording for the known refusals, fall back to the
+    // Worker's message (it is already written for end users).
+    var msg = AI_PROXY_ERRORS[code] || (data && data.message) ||
+      'The AI report could not be generated (error ' + res.status + ').';
+    console.warn('[ai-proxy] ' + res.status + ' ' + code);
+    throw aiError(code, msg, res.status);
+  }
+
+  // data.model is the raw model id the Worker used; the report shows the label.
+  console.log('[ai-proxy] report generated with', data.model);
+  return { report: data.report, model: AI_MODEL_LABEL, truncated: data.truncated === true };
 }
 
-function loadAISettings() {
-  try {
-    var key = localStorage.getItem(AI_KEY_STORAGE) || '';
-    var enabled = localStorage.getItem(AI_ENABLED_STORAGE) === '1';
-    var badge = document.getElementById('aiStatusBadge');
-    if (badge) {
-      if (key && enabled) {
-        badge.textContent = 'Active';
-        badge.style.background = '#DCFCE7';
-        badge.style.color = '#15803D';
-      } else if (key && !enabled) {
-        badge.textContent = 'Off';
-        badge.style.background = '#FEF3C7';
-        badge.style.color = '#92400E';
-      } else {
-        badge.textContent = 'Not set';
-        badge.style.background = 'var(--gray-200)';
-        badge.style.color = 'var(--gray-600)';
-      }
+function aiError(code, message, status) {
+  var e = new Error(message);
+  e.code = code;
+  e.status = status || 0;
+  return e;
+}
+
+// Trimmed payload for the proxy: only the fields worker.js reads, so the
+// long `guide` / `main_depts` fields stay out of the request body. The Korean
+// DATA keys are passed through untouched -- the Worker translates them.
+function buildAIResultsPayload(evaluated) {
+  return {
+    area: state.type || '',
+    items: evaluated.map(function(it) {
+      return {
+        area: state.type || '',
+        cat_no: it.cat_no,
+        item_no: it.item_no,
+        keyword: it.keyword || '',
+        question: it.question || '',
+        clause: it.clause || '',
+        clause_name: it.clause_name || '',
+        grade: it.grade,
+        finding: it.finding || '',
+        evidence: it.evidence || '',
+        opinion: it.opinion || ''
+      };
+    })
+  };
+}
+
+function escapeHTML(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Minimal renderer for the Markdown subset the proxy's system prompt asks for:
+// ## / ### headings, numbered and bulleted lists, **bold**, *italic*, `code`.
+// Everything is escaped before any tag is added.
+function renderAIMarkdown(md) {
+  var inline = function(t) {
+    return escapeHTML(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  };
+  var out = [];
+  var listType = null;
+  var closeList = function() { if (listType) { out.push('</' + listType + '>'); listType = null; } };
+  var openList = function(t) { if (listType !== t) { closeList(); out.push('<' + t + '>'); listType = t; } };
+
+  String(md || '').replace(/\r\n?/g, '\n').split('\n').forEach(function(raw) {
+    var line = raw.trim();
+    if (!line) { closeList(); return; }
+    var h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) {
+      closeList();
+      var level = Math.min(Math.max(h[1].length, 2), 3);
+      out.push('<h' + level + '>' + inline(h[2]) + '</h' + level + '>');
+      return;
     }
-  } catch(e) {}
+    var ol = line.match(/^\d+[.)]\s+(.*)$/);
+    if (ol) { openList('ol'); out.push('<li>' + inline(ol[1]) + '</li>'); return; }
+    var ul = line.match(/^[-*+]\s+(.*)$/);
+    if (ul) { openList('ul'); out.push('<li>' + inline(ul[1]) + '</li>'); return; }
+    closeList();
+    out.push('<p>' + inline(line) + '</p>');
+  });
+  closeList();
+  return out.join('');
 }
 
+function buildAIReportHTML(ai) {
+  return '<div class="rpt-ai">'
+    + '<div class="rpt-ai-head"><i class="fas fa-sparkles" style="color:#6366F1;"></i> AI Auditor Report'
+    + '<span class="ai-badge"><i class="fas fa-sparkles"></i> AI</span>'
+    + '<span class="rpt-ai-model">' + escapeHTML(ai.model) + '</span></div>'
+    + '<div class="rpt-ai-md">' + renderAIMarkdown(ai.report) + '</div>'
+    + (ai.truncated
+        ? '<div class="rpt-ai-note"><i class="fas fa-scissors"></i> This report hit the length limit and may be cut off at the end.</div>'
+        : '')
+    + '</div>';
+}
+
+function buildAIBlockedHTML(title, message) {
+  return '<div class="rpt-ai-blocked">'
+    + '<b><i class="fas fa-circle-info"></i> ' + escapeHTML(title) + '</b>'
+    + escapeHTML(message)
+    + '</div>';
+}
+
+// The modal is informational now -- there is no key or toggle to persist.
 function openAISettings() {
-  try {
-    var key = localStorage.getItem(AI_KEY_STORAGE) || '';
-    var enabled = localStorage.getItem(AI_ENABLED_STORAGE) === '1';
-    document.getElementById('aiApiKeyInput').value = key;
-    document.getElementById('aiEnabledInput').checked = enabled;
-  } catch(e) {}
-  loadAISettings();
   document.getElementById('aiSettingsModal').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -2352,141 +2471,6 @@ function openAISettings() {
 function closeAISettings() {
   document.getElementById('aiSettingsModal').classList.remove('show');
   document.body.style.overflow = '';
-}
-
-function saveAISettings(e) {
-  e.preventDefault();
-  var key = document.getElementById('aiApiKeyInput').value.trim();
-  var enabled = document.getElementById('aiEnabledInput').checked;
-  try {
-    if (key) localStorage.setItem(AI_KEY_STORAGE, key);
-    else localStorage.removeItem(AI_KEY_STORAGE);
-    localStorage.setItem(AI_ENABLED_STORAGE, enabled && key ? '1' : '0');
-  } catch(err) {}
-  loadAISettings();
-  closeAISettings();
-  if (key && enabled) {
-    alert('AI report settings saved.\nClaude Haiku will write the opinion and ideas on your next report.');
-  } else {
-    alert('Settings saved.\nAI is off; the report will use the default template.');
-  }
-}
-
-function clearAISettings() {
-  if (!confirm('Delete the saved API key and all settings?')) return;
-  try {
-    localStorage.removeItem(AI_KEY_STORAGE);
-    localStorage.removeItem(AI_ENABLED_STORAGE);
-  } catch(e) {}
-  document.getElementById('aiApiKeyInput').value = '';
-  document.getElementById('aiEnabledInput').checked = false;
-  loadAISettings();
-}
-
-function isAIEnabled() {
-  try {
-    return !!(localStorage.getItem(AI_KEY_STORAGE) && localStorage.getItem(AI_ENABLED_STORAGE) === '1');
-  } catch(e) { return false; }
-}
-
-async function callAnthropicAI(prompt) {
-  var key;
-  try { key = localStorage.getItem(AI_KEY_STORAGE); } catch(e) {}
-  if (!key) throw new Error('API key not set');
-  var res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: AI_MODEL,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
-  if (!res.ok) {
-    var errText = await res.text();
-    throw new Error('AI call failed: ' + res.status + ' ' + errText.slice(0,200));
-  }
-  var data = await res.json();
-  var text = (data.content && data.content[0] && data.content[0].text) || '';
-  return text.trim();
-}
-
-function buildItemPrompt(item) {
-  var cn = item.clause_name ? item.clause_name.split('\n')[0] : '';
-  var gradeLabel = item.grade === 'F' ? 'F (Not Met)' : 'C (Partially Met)';
-  return [
-    'You are an expert auditor with 20+ years of experience conducting IATF 16949 / ISO 9001 QMS operational assessments.',
-    'For the assessment item below, analyze the findings, evidence, and opinion entered by the assessor, and',
-    'write a practical, professional "summary opinion" and "improvement ideas that are actually actionable" in clear professional English.',
-    '',
-    '-- Assessment item info --',
-    '- Area: ' + (kwLabel(item.keyword) || ''),
-    '- Item no.: ' + item.cat_no + '.' + item.item_no,
-    '- Question: ' + (item.question || ''),
-    '· IATF Clause: ' + (item.clause || '') + (cn ? ' (' + cn + ')' : ''),
-    '- Audit guide:\n' + (item.guide || '(none)'),
-    '- Grade: ' + gradeLabel,
-    '',
-    '-- Assessor input --',
-    '- Findings: ' + (item.finding || '(not provided)'),
-    '- Evidence: ' + (item.evidence || '(not provided)'),
-    '- Opinion (memo): ' + (item.opinion || '(not provided)'),
-    '',
-    '-- Output request --',
-    'Respond ONLY in the JSON format below. Never include any other explanatory text.',
-    '{',
-    '  "summary": "<Summary opinion — 3–5 sentences that reference the assessor’s input, point out current operational issues and risks from the IATF clause perspective, and explain from an expert view why it warrants the ' + gradeLabel + ' grade.>",',
-    '  "ideas": ["<improvement idea 1>", "<improvement idea 2>", "<improvement idea 3>", "<improvement idea 4>", "<improvement idea 5>"]',
-    '}',
-    '',
-    '-- Improvement-idea principles (VERY IMPORTANT) --',
-    'Write 5–6 improvement ideas, strictly following these principles:',
-    '',
-    '1. [Name the owner] Each idea must make clear WHO (which team/role) does WHAT. e.g., "The quality team lead...", "The line operator...", "Purchasing..."',
-    '2. [Concrete deliverable] Specify the actual artifact created or changed — not vague notions like "establish/strengthen/improve." e.g., "Add an S/O/D table to the FMEA sheet", "Cut the inspection interval on Control Plan process #3 from 4h to 2h", "State a torque limit of +/-10% in the work instruction"',
-    '3. [Quantify] Where possible include numbers, intervals, thresholds, or KPIs. e.g., "achieve Cpk >= 1.33", "monthly check", "detection rate >= 95%"',
-    '4. [Timeframe cue] Imply whether each idea is achievable "immediately / within 1 week / within 1 month / within the quarter."',
-    '5. [Clause link] Where possible, mark which requirement the action satisfies, e.g., "(satisfies ' + (item.clause || 'relevant IATF clause') + ')".',
-    '6. [Industry fit] Ideas must be realistically applicable on manufacturing floors (automotive parts, wiring/harness, industrial machinery). Avoid generic, textbook phrasing.',
-    '7. [No overlap] The ideas must cover different dimensions (procedure/document/training/system/monitoring/verification, etc.).',
-    '',
-    '-- Good example --',
-    '✓ "Have the quality team re-evaluate, within 1 month, the 12 potential failure modes missing S/O/D ratings in the process FMEA, and reflect High Action Priority items into the Control Plan (satisfies IATF 8.5.1.1)."',
-    '✗ "Strengthen the FMEA system" (too abstract, no deliverable)',
-    '',
-    'Even if findings/evidence/opinion are blank, derive concrete improvement ideas that follow the principles above, based on the audit guide and the IATF clause.'
-  ].join('\n');
-}
-
-function parseAIResponse(text) {
-  try {
-    var jsonStart = text.indexOf('{');
-    var jsonEnd = text.lastIndexOf('}');
-    if (jsonStart < 0 || jsonEnd < 0) return null;
-    var jsonText = text.substring(jsonStart, jsonEnd + 1);
-    var obj = JSON.parse(jsonText);
-    if (!obj.summary || !Array.isArray(obj.ideas)) return null;
-    return { summary: obj.summary, ideas: obj.ideas.filter(function(x){return x && typeof x==='string';}) };
-  } catch(e) { return null; }
-}
-
-async function genAIItem(item) {
-  try {
-    var prompt = buildItemPrompt(item);
-    var raw = await callAIProxyBackend(prompt);
-    if (!raw) raw = await callAnthropicAI(prompt);
-    var parsed = parseAIResponse(raw);
-    if (!parsed) return null;
-    return parsed;
-  } catch(e) {
-    console.warn('AI generation failed, using template fallback:', e.message);
-    return null;
-  }
 }
 
 
@@ -2764,17 +2748,20 @@ async function generateReport() {
   var reportContent = document.getElementById('reportContent');
   reportSection.classList.remove('hidden');
 
-  var useAI = isAIEnabled() && cfItems.length > 0;
-  var aiResults = {};
-
-  if (useAI) {
+  // --- AI narrative report (ai-proxy Worker) ---------------------------
+  // Already generated for this assessment? Re-use it instead of spending
+  // another request, which the proxy would refuse anyway.
+  var aiHTML = '';
+  if (state.aiReport && state.assessmentId && state.aiReport.assessmentId === state.assessmentId) {
+    aiHTML = buildAIReportHTML(state.aiReport);
+  } else if (AI_PROXY_URL && evaluated.length > 0) {
     reportContent.innerHTML =
       '<div class="card" style="text-align:center;padding:40px;">' +
         '<div class="ai-loading" style="font-size:1rem;">' +
           '<div class="ai-spinner"></div>' +
-          '<span>Claude Haiku is generating the summary opinion and improvement ideas for ' + cfItems.length + ' items needing improvement...</span>' +
+          '<span>' + AI_MODEL_LABEL + ' is reviewing all ' + evaluated.length + ' graded item(s) and writing your audit report...</span>' +
         '</div>' +
-        '<p style="margin-top:14px;color:var(--gray-500);font-size:0.85rem;">This takes about ' + Math.max(5, cfItems.length * 2) + ' seconds.</p>' +
+        '<p style="margin-top:14px;color:var(--gray-500);font-size:0.85rem;">This usually takes 30&ndash;60 seconds. Please keep this page open.</p>' +
       '</div>';
 
     var btnReport = document.getElementById('btnReport');
@@ -2783,26 +2770,45 @@ async function generateReport() {
     btnReport.innerHTML = '<div class="ai-spinner" style="display:inline-block;vertical-align:middle;"></div> Analyzing...';
 
     try {
-      var aiPromises = cfItems.map(function(it) {
-        return genAIItem(it).then(function(res) {
-          var key = it.cat_no + '_' + it.item_no;
-          aiResults[key] = res;
-        });
-      });
-      await Promise.all(aiPromises);
-    } catch(e) {
-      console.warn('Error during AI batch generation:', e);
+      // The assessment row is inserted when "Finish" is clicked; wait for
+      // that insert so we have the id the proxy needs.
+      if (!state.assessmentId && state.savePromise) await state.savePromise;
+
+      if (!getCurrentUser()) {
+        aiHTML = buildAIBlockedHTML('AI report unavailable',
+          'Sign in before finishing an assessment so it is saved to your account — the AI report is generated from the saved assessment.');
+      } else if (!state.assessmentId) {
+        aiHTML = buildAIBlockedHTML('AI report unavailable',
+          'This assessment could not be saved to your account, so there is nothing for the AI to analyze. Please finish the assessment again while signed in.');
+      } else {
+        var ai = await callAIProxyBackend(state.assessmentId, buildAIResultsPayload(evaluated));
+        state.aiReport = {
+          assessmentId: state.assessmentId,
+          report: ai.report,
+          model: ai.model,
+          truncated: ai.truncated
+        };
+        aiHTML = buildAIReportHTML(state.aiReport);
+      }
+    } catch (e) {
+      // Every refusal reason (free plan / quota used / already generated)
+      // reaches the user here; the template report below is still produced.
+      var title = (e.code === 'plan_required' || e.code === 'quota_exhausted' || e.code === 'already_generated')
+        ? 'AI report not available' : 'AI report could not be generated';
+      aiHTML = buildAIBlockedHTML(title, e.message || 'Unexpected error.');
     }
 
     btnReport.disabled = false;
     btnReport.innerHTML = origBtn;
   }
 
-  reportContent.innerHTML = buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fCount, aiResults, useAI);
+  reportContent.innerHTML = buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fCount, aiHTML);
   reportSection.scrollIntoView({behavior:'smooth'});
 }
 
-function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fCount, aiResults, useAI) {
+// `aiHTML` is the rendered AI narrative report (or the reason it is missing);
+// it is placed above the per-item C/F analysis, which is template-generated.
+function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fCount, aiHTML) {
   var m = state.meta;
   var total = evaluated.length;
   var saCount = dist.S + dist.A;
@@ -2810,10 +2816,7 @@ function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fC
   var saRate = total > 0 ? Math.round(saCount/total*100) : 0;
   var itemsHTML = cfItems.length===0
     ? '<div class="rpt-empty"><i class="fas fa-check-circle" style="font-size:2rem;color:#16a34a;"></i><div>No items need improvement — all items graded B or above</div></div>'
-    : cfItems.map(function(it) {
-        var ar = aiResults && aiResults[it.cat_no + '_' + it.item_no];
-        return buildReportItemHTML(it, ar, useAI);
-      }).join('');
+    : cfItems.map(function(it) { return buildReportItemHTML(it); }).join('');
   return '<div class="rpt-wrap">'
     + '<div class="rpt-head">'
     + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">'
@@ -2833,6 +2836,7 @@ function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fC
     + '<div class="rpt-kpi"><div class="rk-val" style="color:#dc2626;">'+dist.F+'</div><div class="rk-lbl">F (Not Met)</div></div>'
     + '</div>'
     + '<div class="rpt-body">'
+    + (aiHTML || '')
     + '<div class="rpt-section-title"><i class="fas fa-triangle-exclamation" style="color:#ea580c;"></i> Detailed analysis of items needing improvement — '+cfItems.length+' C/F-grade item(s)</div>'
     + itemsHTML
     + '</div>'
@@ -2844,7 +2848,9 @@ function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fC
     + '</div></div>';
 }
 
-function buildReportItemHTML(item, aiResult, useAI) {
+// Per-item summary/ideas are template-generated. The AI's analysis of the
+// whole assessment is rendered once, above these items, by buildAIReportHTML.
+function buildReportItemHTML(item) {
   var isF = item.grade === 'F';
   var gc = isF ? '#dc2626' : '#ea580c';
   var hcls = isF ? 'rpt-item-hd-f' : 'rpt-item-hd-c';
@@ -2854,9 +2860,8 @@ function buildReportItemHTML(item, aiResult, useAI) {
   var evidenceHTML = item.evidence ? '<div class="rpt-field"><div class="rpt-fl"><i class="fas fa-file-lines" style="color:#10B981;"></i> Evidence</div><div class="rpt-fv">'+item.evidence+'</div></div>' : '';
   var opinionHTML = item.opinion ? '<div class="rpt-field"><div class="rpt-fl"><i class="fas fa-lightbulb" style="color:#F59E0B;"></i> Opinion (entered)</div><div class="rpt-fv">'+item.opinion+'</div></div>' : '';
   var hasFEO = item.finding || item.evidence || item.opinion;
-  var summaryText = (aiResult && aiResult.summary) ? aiResult.summary : genSummaryOpinion(item);
-  var ideas = (aiResult && aiResult.ideas && aiResult.ideas.length > 0) ? aiResult.ideas : genImprovementIdeas(item);
-  var aiBadge = (aiResult && useAI) ? ' <span class="ai-badge"><i class="fas fa-sparkles"></i> AI</span>' : '';
+  var summaryText = genSummaryOpinion(item);
+  var ideas = genImprovementIdeas(item);
   return '<div class="rpt-item">'
     + '<div class="rpt-item-hd '+hcls+'">'
     + '<span class="rpt-grade-badge" style="background:'+gc+';">'+item.grade+'</span>'
@@ -2867,9 +2872,9 @@ function buildReportItemHTML(item, aiResult, useAI) {
     + '<div class="rpt-item-body">'
     + findingHTML + evidenceHTML + opinionHTML
     + (hasFEO ? '<div class="rpt-divider"></div>' : '')
-    + '<div class="rpt-opinion"><div class="rpt-opinion-title"><i class="fas fa-circle-dot"></i> Summary Opinion' + aiBadge + '</div>'
+    + '<div class="rpt-opinion"><div class="rpt-opinion-title"><i class="fas fa-circle-dot"></i> Summary Opinion</div>'
     + '<div class="rpt-opinion-text">'+summaryText+'</div></div>'
-    + '<div class="rpt-ideas"><div class="rpt-ideas-title"><i class="fas fa-lightbulb"></i> Improvement Ideas' + aiBadge + '</div>'
+    + '<div class="rpt-ideas"><div class="rpt-ideas-title"><i class="fas fa-lightbulb"></i> Improvement Ideas</div>'
     + '<ul class="rpt-ideas-list">'+ideas.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul></div>'
     + '</div></div>';
 }
