@@ -802,7 +802,6 @@ button { font-family: inherit; }
 /* Server-generated (ai-proxy) narrative report */
 .rpt-ai { background: white; border: 1px solid #C7D2FE; border-radius: 10px; padding: 20px 24px; margin-bottom: 22px; }
 .rpt-ai-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.95rem; font-weight: 700; color: #4338CA; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--gray-200); }
-.rpt-ai-model { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--gray-500); }
 .rpt-ai-md { font-size: 0.9rem; color: var(--gray-700); line-height: 1.8; }
 .rpt-ai-md h2 { font-size: 1rem; font-weight: 800; color: var(--gray-900); margin: 20px 0 8px; }
 .rpt-ai-md h2:first-child { margin-top: 0; }
@@ -815,10 +814,11 @@ button { font-family: inherit; }
 .rpt-ai-note { font-size: 0.8rem; color: #92400E; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 8px 12px; margin-top: 12px; }
 .rpt-ai-blocked { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; font-size: 0.88rem; color: #92400E; line-height: 1.7; }
 .rpt-ai-blocked b { display: block; margin-bottom: 4px; color: #78350F; }
+.rpt-disclaimer { padding: 14px 28px; background: var(--gray-50); border-top: 1px solid var(--gray-200); font-size: 0.74rem; color: var(--gray-500); line-height: 1.6; }
 @media (max-width: 768px) {
   .rpt-kpi-row { flex-wrap: wrap; }
   .rpt-kpi { flex: 1 0 33%; }
-  .rpt-head, .rpt-body, .rpt-conclusion, .rpt-footer-row { padding: 16px; }
+  .rpt-head, .rpt-body, .rpt-conclusion, .rpt-footer-row, .rpt-disclaimer { padding: 16px; }
   .rpt-ai { padding: 16px; }
 }
 @media print {
@@ -1543,7 +1543,7 @@ button { font-family: inherit; }
       <div class="btn-row">
         <button class="btn btn-outline" id="btnRestart"><i class="fas fa-redo"></i> Restart</button>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="btnReport"><i class="fas fa-file-lines"></i> Comprehensive report generation <span class="ai-badge"><i class="fas fa-sparkles"></i> AI</span></button>
+          <button class="btn btn-primary" id="btnReport"><i class="fas fa-file-lines"></i> Comprehensive report generation</button>
           <button class="btn btn-outline" id="btnAISettings"><i class="fas fa-robot"></i> AI Settings</button>
           <button class="btn btn-outline" id="btnPrint"><i class="fas fa-print"></i> Print/PDF</button>
           <button class="btn btn-outline" id="btnExport"><i class="fas fa-download"></i> Download CSV</button>
@@ -1732,8 +1732,8 @@ button { font-family: inherit; }
 
     <div style="background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border:1px solid #BFDBFE;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:0.85rem;color:var(--gray-700);line-height:1.7;">
       <b style="color:#1D4ED8;"><i class="fas fa-circle-info"></i> How it works</b><br>
-      · <b>No API key required.</b> AuditIQ calls Claude from its own secure backend, so your browser never holds an API key and never talks to the AI provider directly.<br>
-      · Your saved assessment is sent to our server over an authenticated request, and the report comes back written by <b>Claude Sonnet 5</b>.<br>
+      · <b>No API key required.</b> AuditIQ runs the analysis on its own secure backend, so your browser never holds an API key and never talks to the AI provider directly.<br>
+      · Your saved assessment is sent to our server over an authenticated request, and the written report comes back from it.<br>
       · The AI uses your <b>grades, Findings / Evidence / Opinion</b> and the IATF&nbsp;16949 / ISO&nbsp;9001 clauses behind each item.<br>
       · You get an <b>Executive Summary, Critical Gaps, a Prioritized Action Plan and Quick Wins</b> on top of the standard C/F-grade analysis.
     </div>
@@ -2316,8 +2316,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // model -- lives in the ai-proxy Worker (see ./ai-proxy/worker.js).
 const AI_PROXY_URL = 'https://auditiq-ai-proxy.pjcan2002.workers.dev';
 
-// Display label only; the Worker owns the real model id.
-const AI_MODEL_LABEL = 'Claude Sonnet 5';
+// The model id is deliberately not surfaced in the UI -- it is logged to the
+// console only, so swapping models in the Worker needs no frontend change.
+
+// Shown at the foot of every generated report and appended to the CSV export.
+const REPORT_DISCLAIMER = 'This report is AI-generated based on your self-assessment responses. '
+  + 'Professional review is recommended before use in certification activities.';
 
 // Reasons the proxy can refuse with 403, mapped to what the user should read.
 const AI_PROXY_ERRORS = {
@@ -2331,7 +2335,7 @@ const AI_PROXY_ERRORS = {
   not_configured:   'AI reports are temporarily unavailable. Please try again later.'
 };
 
-// Calls the proxy. Resolves with { report, model, truncated } or throws an
+// Calls the proxy. Resolves with { report, truncated } or throws an
 // Error carrying `.code` (the proxy's error code) and a user-facing message.
 async function callAIProxyBackend(assessmentId, results) {
   var session = (await sb.auth.getSession()).data.session;
@@ -2365,9 +2369,9 @@ async function callAIProxyBackend(assessmentId, results) {
     throw aiError(code, msg, res.status);
   }
 
-  // data.model is the raw model id the Worker used; the report shows the label.
+  // Console only -- the model is never shown in the report.
   console.log('[ai-proxy] report generated with', data.model);
-  return { report: data.report, model: AI_MODEL_LABEL, truncated: data.truncated === true };
+  return { report: data.report, truncated: data.truncated === true };
 }
 
 function aiError(code, message, status) {
@@ -2445,9 +2449,7 @@ function renderAIMarkdown(md) {
 
 function buildAIReportHTML(ai) {
   return '<div class="rpt-ai">'
-    + '<div class="rpt-ai-head"><i class="fas fa-sparkles" style="color:#6366F1;"></i> AI Auditor Report'
-    + '<span class="ai-badge"><i class="fas fa-sparkles"></i> AI</span>'
-    + '<span class="rpt-ai-model">' + escapeHTML(ai.model) + '</span></div>'
+    + '<div class="rpt-ai-head"><i class="fas fa-file-contract" style="color:#6366F1;"></i> Auditor Report</div>'
     + '<div class="rpt-ai-md">' + renderAIMarkdown(ai.report) + '</div>'
     + (ai.truncated
         ? '<div class="rpt-ai-note"><i class="fas fa-scissors"></i> This report hit the length limit and may be cut off at the end.</div>'
@@ -2759,7 +2761,7 @@ async function generateReport() {
       '<div class="card" style="text-align:center;padding:40px;">' +
         '<div class="ai-loading" style="font-size:1rem;">' +
           '<div class="ai-spinner"></div>' +
-          '<span>' + AI_MODEL_LABEL + ' is reviewing all ' + evaluated.length + ' graded item(s) and writing your audit report...</span>' +
+          '<span>Generating report... reviewing all ' + evaluated.length + ' graded item(s).</span>' +
         '</div>' +
         '<p style="margin-top:14px;color:var(--gray-500);font-size:0.85rem;">This usually takes 30&ndash;60 seconds. Please keep this page open.</p>' +
       '</div>';
@@ -2785,7 +2787,6 @@ async function generateReport() {
         state.aiReport = {
           assessmentId: state.assessmentId,
           report: ai.report,
-          model: ai.model,
           truncated: ai.truncated
         };
         aiHTML = buildAIReportHTML(state.aiReport);
@@ -2842,6 +2843,7 @@ function buildReportHTML(cfItems, evaluated, dist, avg, adjAvg, overallGrade, fC
     + '</div>'
     + '<div class="rpt-conclusion"><div class="rpt-conclusion-title"><i class="fas fa-flag-checkered"></i> Conclusion & Recommendations</div>'
     + '<p>'+genConclusion(total, saCount, cfCount, fCount, adjAvg, overallGrade)+'</p></div>'
+    + '<div class="rpt-disclaimer">' + REPORT_DISCLAIMER + '</div>'
     + '<div class="rpt-footer-row">'
     + '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'reportSection\').classList.add(\'hidden\');">Close</button>'
     + '<button class="btn btn-outline btn-sm" onclick="window.print()"><i class="fas fa-print"></i> Print/PDF</button>'
