@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230B2545'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>AuditIQ | Expert-Grade QMS Diagnostics for Your Team — at a Fraction of the Cost</title>
 <meta name="description" content="The same standards top consultants use. Diagnose your team's operational maturity at an expert level with 180+ audit questions based on QMS (IATF 16949 · ISO 9001). $30 per assessment · $59 per year. Over 99% cheaper than external consulting.">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -1354,7 +1355,7 @@ button { font-family: inherit; }
       <div class="logo"><i class="fas fa-shield-halved"></i> AuditIQ PRO</div>
       <p>QMS-based (IATF 16949 / ISO 9001)<br>Team operational-maturity assessment · expert-grade results at a fair price</p>
       <p style="margin-top:12px;">
-        <i class="fas fa-envelope"></i> pjcan2002@gmail.com
+        <i class="fas fa-envelope"></i> <a href="mailto:support@auditiqhq.com" style="color:inherit;">support@auditiqhq.com</a>
       </p>
     </div>
     <div class="footer-col">
@@ -1822,7 +1823,7 @@ let currentUser = null; // synchronous cache of the signed-in Supabase user
 
 async function fetchPlanFor(uid) {
   try {
-    var res = await sb.from('profiles').select('plan').eq('id', uid).single();
+    var res = await sb.from('profiles').select('plan').eq('id', uid).maybeSingle();
     return (res.data && res.data.plan) || 'free';
   } catch (e) {
     return 'free';
@@ -2083,6 +2084,13 @@ setTimeout(() => {
 }, 100);
 
 function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
+// Keep placeholder href="#" links from appending a trailing "#" to the URL
+document.addEventListener('click', function (e) {
+  var a = e.target.closest && e.target.closest('a[href="#"]');
+  if (!a) return;
+  e.preventDefault();
+  if (a.classList.contains('nav-logo')) window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 function toggleFaq(item) { item.classList.toggle('open'); }
 
 function updateTierBadge() {
